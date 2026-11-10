@@ -9,19 +9,25 @@
   // --- Constants & Config ---
   const INITIAL_FONT_SIZE_PT = 10;
   const BASE_GROWTH_RATE_PT_PER_SEC = 2.0; // 1 point per 0.5s = 2.0 pt/s
-  const SPEED_STEP_FACTOR = 0.10; // 10% change per arrow press
-  const MIN_SPEED_MULTIPLIER = 0.05; // Prevent stalling to absolute zero
-  const MAX_SPEED_MULTIPLIER = 50.0; // Reasonable upper boundary
-  const DEFAULT_WORD = 'blah';
+  const SPEED_STEP = 0.10; // +/- 10% of base rate per arrow press (additive, no caps)
+  const MIN_FONT_SIZE_PT = 0; // shrinking stops here
+  const BASE_ROTATION_SPEED_DEG_PER_SEC = 45;
+  const ROTATION_STEP_FACTOR = 0.10; // 10% faster per repeated arrow press
+  const SCROLL_STEP_FRACTION = 0.10; // 10% of viewport per W/A/S/D press
+  const DEFAULT_WORD = 'dog';
 
   // --- Application State ---
   const state = {
     word: DEFAULT_WORD,
     fontSize: INITIAL_FONT_SIZE_PT,
-    isExpanding: false,
-    speedMultiplier: 1.0,
+    isRunning: false,      // drives both expansion and rotation
+    speedMultiplier: 0,    // starts at zero: no growth until Up/Down is pressed
     hasStarted: false,
-    hudVisible: true
+    hudVisible: true,
+    rotationAngle: 0,      // degrees, positive = clockwise
+    rotationVelocity: 0,   // degrees/sec, sign gives direction, 0 = not rotating
+    scrollX: 0,            // view offset in px (positive = viewing further right)
+    scrollY: 0             // view offset in px (positive = viewing further down)
   };
 
   // --- DOM Elements ---
@@ -33,6 +39,7 @@
   const hudFontSize = document.getElementById('hud-font-size');
   const hudSpeed = document.getElementById('hud-speed');
   const hudMultiplier = document.getElementById('hud-multiplier');
+  const hudRotation = document.getElementById('hud-rotation');
   const labelSpaceAction = document.getElementById('label-space-action');
   const wordForm = document.getElementById('word-form');
   const wordInput = document.getElementById('word-input');
@@ -67,14 +74,16 @@
     }
   }
 
-  function initWordFromUrlOrStorage() {
+  // Returns true if a custom word was supplied via the query string.
+  function initWordFromUrl() {
     const params = new URLSearchParams(window.location.search);
     const paramWord = params.get('word');
     if (paramWord && paramWord.trim()) {
       setWord(paramWord.trim());
-    } else {
-      setWord(DEFAULT_WORD);
+      return true;
     }
+    setWord(DEFAULT_WORD);
+    return false;
   }
 
   // --- Visual & HUD Updates (Point 6.2) ---
@@ -85,29 +94,59 @@
     hudSpeed.innerHTML = `${currentRate.toFixed(2)} <small>pt/s</small>`;
     hudMultiplier.textContent = `${state.speedMultiplier.toFixed(2)}x`;
 
+    const rotSpeed = Math.abs(state.rotationVelocity);
+    const rotDir = state.rotationVelocity < 0 ? ' ↺' : state.rotationVelocity > 0 ? ' ↻' : '';
+    hudRotation.innerHTML = `${rotSpeed.toFixed(1)} <small>°/s${rotDir}</small>`;
+
     if (!state.hasStarted) {
       hudStatusBadge.textContent = 'Ready';
       hudStatusBadge.className = 'hud-badge';
-      labelSpaceAction.textContent = 'Start expansion';
+      labelSpaceAction.textContent = 'Start animation';
       btnPlayText.textContent = 'Start (Space)';
       btnPlayPause.classList.remove('active-pause');
-    } else if (state.isExpanding) {
-      hudStatusBadge.textContent = 'Expanding';
+    } else if (state.isRunning) {
+      hudStatusBadge.textContent =
+        state.speedMultiplier > 0 ? 'Expanding' : state.speedMultiplier < 0 ? 'Shrinking' : 'Running';
       hudStatusBadge.className = 'hud-badge active';
-      labelSpaceAction.textContent = 'Pause expansion';
+      labelSpaceAction.textContent = 'Pause animation';
       btnPlayText.textContent = 'Pause (Space)';
       btnPlayPause.classList.add('active-pause');
     } else {
       hudStatusBadge.textContent = 'Paused';
       hudStatusBadge.className = 'hud-badge paused';
-      labelSpaceAction.textContent = 'Resume expansion';
+      labelSpaceAction.textContent = 'Resume animation';
       btnPlayText.textContent = 'Resume (Space)';
       btnPlayPause.classList.remove('active-pause');
     }
   }
 
+  // How far (px) the view may scroll from center on each axis, based on the
+  // bounding box of the rotated word versus the viewport.
+  function getScrollLimits() {
+    const w = wordDisplay.offsetWidth;
+    const h = wordDisplay.offsetHeight;
+    const rad = state.rotationAngle * Math.PI / 180;
+    const cos = Math.abs(Math.cos(rad));
+    const sin = Math.abs(Math.sin(rad));
+    const boxW = w * cos + h * sin;
+    const boxH = w * sin + h * cos;
+    return {
+      x: Math.max(0, (boxW - window.innerWidth) / 2),
+      y: Math.max(0, (boxH - window.innerHeight) / 2)
+    };
+  }
+
+  function clamp(value, limit) {
+    return Math.max(-limit, Math.min(limit, value));
+  }
+
   function renderWord() {
     wordDisplay.style.fontSize = `${state.fontSize}pt`;
+    const limits = getScrollLimits();
+    state.scrollX = clamp(state.scrollX, limits.x);
+    state.scrollY = clamp(state.scrollY, limits.y);
+    wordDisplay.style.transform =
+      `translate(-50%, -50%) translate(${-state.scrollX}px, ${-state.scrollY}px) rotate(${state.rotationAngle}deg)`;
   }
 
   // --- Animation Loop ---
@@ -118,9 +157,10 @@
     const deltaSeconds = (currentTimestamp - lastTimestamp) / 1000;
     lastTimestamp = currentTimestamp;
 
-    if (state.isExpanding) {
+    if (state.isRunning) {
+      state.rotationAngle = (state.rotationAngle + state.rotationVelocity * deltaSeconds) % 360;
       const growthPerSec = BASE_GROWTH_RATE_PT_PER_SEC * state.speedMultiplier;
-      state.fontSize += growthPerSec * deltaSeconds;
+      state.fontSize = Math.max(MIN_FONT_SIZE_PT, state.fontSize + growthPerSec * deltaSeconds);
       renderWord();
       updateHud();
     }
@@ -129,36 +169,87 @@
   }
 
   // --- Action Handlers ---
-  function toggleStartPause() {
+  function setRunning(running) {
     state.hasStarted = true;
-    state.isExpanding = !state.isExpanding;
+    state.isRunning = running;
     lastTimestamp = null; // reset delta tracking to prevent jumps
     updateHud();
+  }
 
-    if (state.isExpanding) {
-      showToast('Expansion started');
+  function toggleStartPause() {
+    setRunning(!state.isRunning);
+    if (state.isRunning) {
+      showToast('Animation started');
     } else {
       showToast(`Paused at ${state.fontSize.toFixed(1)} pt`);
     }
   }
 
-  function increaseSpeed() {
-    state.speedMultiplier = Math.min(MAX_SPEED_MULTIPLIER, state.speedMultiplier * (1 + SPEED_STEP_FACTOR));
-    updateHud();
-    showToast(`Speed: ${(state.speedMultiplier).toFixed(2)}x (+10%)`);
+  // Arrow keys start the animation if it is stopped (ready or paused).
+  function ensureRunning() {
+    if (!state.isRunning) setRunning(true);
   }
 
-  function decreaseSpeed() {
-    state.speedMultiplier = Math.max(MIN_SPEED_MULTIPLIER, state.speedMultiplier * (1 - SPEED_STEP_FACTOR));
+  // delta: +1 or -1 steps of 10% of the base rate. No upper or lower cap.
+  function changeSpeed(delta) {
+    // round to avoid floating-point drift (e.g. 0.30000000000000004)
+    state.speedMultiplier = Math.round((state.speedMultiplier + delta * SPEED_STEP) * 100) / 100;
+    ensureRunning();
     updateHud();
-    showToast(`Speed: ${(state.speedMultiplier).toFixed(2)}x (-10%)`);
+    const rate = BASE_GROWTH_RATE_PT_PER_SEC * state.speedMultiplier;
+    showToast(`Expansion speed: ${rate.toFixed(2)} pt/s (${delta > 0 ? '+' : '-'}10%)`);
   }
 
-  function resetToOriginalSize() {
+  function resetToOriginal() {
     state.fontSize = INITIAL_FONT_SIZE_PT;
+    state.rotationAngle = 0;
+    state.rotationVelocity = 0;
     renderWord();
     updateHud();
-    showToast('Reset font size to 10 pt');
+    showToast('Reset to 10 pt, rotation stopped');
+  }
+
+  // direction: -1 = left (counter-clockwise), +1 = right (clockwise)
+  function rotate(direction) {
+    const label = direction < 0 ? 'left' : 'right';
+    const currentDir = Math.sign(state.rotationVelocity);
+    const speed = Math.abs(state.rotationVelocity);
+
+    if (currentDir === 0) {
+      // Not rotating: start in the requested direction at base speed
+      state.rotationVelocity = direction * BASE_ROTATION_SPEED_DEG_PER_SEC;
+    } else if (currentDir === direction) {
+      state.rotationVelocity *= (1 + ROTATION_STEP_FACTOR);
+    } else {
+      // Opposite direction: slow down by 10% of current speed, but at least
+      // 10% of base speed so it always reaches a stop.
+      const step = Math.max(speed * ROTATION_STEP_FACTOR, BASE_ROTATION_SPEED_DEG_PER_SEC * ROTATION_STEP_FACTOR);
+      const newSpeed = Math.round((speed - step) * 100) / 100;
+      state.rotationVelocity = newSpeed > 0 ? currentDir * newSpeed : 0;
+    }
+
+    ensureRunning();
+    updateHud();
+    if (state.rotationVelocity === 0) {
+      showToast('Rotation stopped');
+    } else if (Math.sign(state.rotationVelocity) === direction) {
+      showToast(`Rotating ${label}: ${Math.abs(state.rotationVelocity).toFixed(1)}°/s`);
+    } else {
+      showToast(`Rotation slowing: ${Math.abs(state.rotationVelocity).toFixed(1)}°/s`);
+    }
+  }
+
+  // dx/dy: -1, 0 or +1 for the direction to scroll the view
+  function scrollView(dx, dy) {
+    const limits = getScrollLimits();
+    const limit = dx !== 0 ? limits.x : limits.y;
+    if (limit <= 0) {
+      showToast('Text fits on screen in that direction');
+      return;
+    }
+    state.scrollX += dx * window.innerWidth * SCROLL_STEP_FRACTION;
+    state.scrollY += dy * window.innerHeight * SCROLL_STEP_FRACTION;
+    renderWord();
   }
 
   function toggleHud(forceState) {
@@ -187,17 +278,47 @@
 
       case 'ArrowUp':
         e.preventDefault();
-        increaseSpeed();
+        changeSpeed(1);
         break;
 
       case 'ArrowDown':
         e.preventDefault();
-        decreaseSpeed();
+        changeSpeed(-1);
         break;
 
       case 'Enter':
         e.preventDefault();
-        resetToOriginalSize();
+        resetToOriginal();
+        break;
+
+      case 'ArrowLeft':
+        e.preventDefault();
+        rotate(-1);
+        break;
+
+      case 'ArrowRight':
+        e.preventDefault();
+        rotate(1);
+        break;
+
+      case 'KeyW':
+        e.preventDefault();
+        scrollView(0, -1);
+        break;
+
+      case 'KeyS':
+        e.preventDefault();
+        scrollView(0, 1);
+        break;
+
+      case 'KeyA':
+        e.preventDefault();
+        scrollView(-1, 0);
+        break;
+
+      case 'KeyD':
+        e.preventDefault();
+        scrollView(1, 0);
         break;
 
       case 'KeyH':
@@ -234,13 +355,17 @@
   });
 
   btnReset.addEventListener('click', () => {
-    resetToOriginalSize();
+    resetToOriginal();
   });
 
   // --- Initialization ---
-  initWordFromUrlOrStorage();
+  const hasCustomWord = initWordFromUrl();
   renderWord();
   updateHud();
+  if (hasCustomWord) {
+    toggleStartPause(); // start running as if Space had been pressed
+  }
+  window.addEventListener('resize', renderWord);
   animFrameId = requestAnimationFrame(animationTick);
 })();
 

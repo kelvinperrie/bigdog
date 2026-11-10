@@ -71,7 +71,7 @@ html, body {
   font-size: 10pt; /* Initial 10pt */
   text-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   transition: color var(--transition-normal);
-  will-change: font-size;
+  will-change: font-size, transform;
 }
 
 /* --- Top Bar Toolbar --- */
@@ -206,7 +206,7 @@ html, body {
 /* Telemetry Metrics */
 .hud-metrics {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   background: var(--surface-card);
   padding: 10px;

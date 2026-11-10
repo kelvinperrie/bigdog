@@ -12,7 +12,7 @@
 <body>
   <!-- Centered Word Container -->
   <main class="canvas-container">
-    <div id="word-display" class="expanding-word" aria-live="polite">blah</div>
+    <div id="word-display" class="expanding-word" aria-live="polite">dog</div>
   </main>
 
   <!-- Top Right Toolbar (HUD Toggle & Settings) -->
@@ -44,11 +44,15 @@
       </div>
       <div class="metric-item">
         <span class="metric-label">Growth Rate</span>
-        <span class="metric-value" id="hud-speed">2.00 <small>pt/s</small></span>
+        <span class="metric-value" id="hud-speed">0.00 <small>pt/s</small></span>
       </div>
       <div class="metric-item">
         <span class="metric-label">Multiplier</span>
-        <span class="metric-value" id="hud-multiplier">1.00x</span>
+        <span class="metric-value" id="hud-multiplier">0.00x</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-label">Rotation</span>
+        <span class="metric-value" id="hud-rotation">0.0 <small>°/s</small></span>
       </div>
     </div>
 
@@ -60,7 +64,7 @@
           type="text" 
           id="word-input" 
           class="text-input" 
-          value="blah" 
+          value="dog"
           placeholder="Enter a word..."
           maxlength="40"
           autocomplete="off"
@@ -77,19 +81,23 @@
       <ul class="shortcuts-list">
         <li>
           <kbd>Space</kbd>
-          <span id="label-space-action">Start expansion</span>
+          <span id="label-space-action">Start animation</span>
         </li>
         <li>
-          <kbd>↑</kbd>
-          <span>Speed +10%</span>
-        </li>
-        <li>
-          <kbd>↓</kbd>
-          <span>Speed -10%</span>
+          <kbd>↑ / ↓</kbd>
+          <span>Expansion speed ±10%</span>
         </li>
         <li>
           <kbd>Enter</kbd>
-          <span>Reset to 10pt</span>
+          <span>Reset size &amp; rotation</span>
+        </li>
+        <li>
+          <kbd>← / →</kbd>
+          <span>Rotate left / right (+10%)</span>
+        </li>
+        <li>
+          <kbd>W A S D</kbd>
+          <span>Scroll oversized text</span>
         </li>
         <li>
           <kbd>H</kbd>
