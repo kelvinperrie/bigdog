@@ -384,10 +384,70 @@ kbd {
   gap: 8px;
 }
 
-/* Toast */
+/* Preset Bar */
+.preset-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px;
+  max-width: calc(100vw - 32px);
+  background: var(--surface-panel);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-hud);
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.preset-bar.hidden {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
+  pointer-events: none;
+}
+
+.preset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 8px 14px;
+  border-radius: 9999px;
+  font-family: var(--font-family);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+.preset-btn:hover {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+.preset-btn:active {
+  transform: translateY(0);
+}
+
+.preset-btn kbd {
+  padding: 0 5px;
+  font-size: 0.68rem;
+}
+
+/* Toast (sits above the preset bar) */
 .toast {
   position: fixed;
-  bottom: 24px;
+  bottom: 90px;
   left: 50%;
   transform: translateX(-50%) translateY(30px);
   background: rgba(15, 23, 42, 0.9);

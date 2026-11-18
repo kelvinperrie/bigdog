@@ -85,6 +85,25 @@
 
 ---
 
+## 4e. Presets
+- A preset bar sits centered along the bottom of the page. Each preset sets the font size, angle, expansion speed and rotation, clears any scroll offset, and starts the animation.
+- Presets can also be triggered with number keys **1–6** (top row or numpad).
+- The preset bar is shown/hidden together with the HUD (H key, close button, Controls button).
+- "Fill" sizes are computed from the current word's measured size so they work for any word and viewport. "Spin fit" sizes the word so its diagonal fits the smaller viewport side (it stays on screen at any angle); "screen fit" sizes the unrotated word to the viewport.
+
+| Key | Preset | Size | Expansion speed | Rotation | Angle |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 1 | **Spin Cycle** | Spin fit, 95% | 0x | 1080°/s clockwise | 0° |
+| 2 | **Turbo Spin** | Spin fit, 95% | 0x | 2500°/s clockwise | 0° |
+| 3 | **Hyper Spin** | Spin fit, 95% | 0x | 5000°/s clockwise | 0° |
+| 4 | **Big Bang** | 0pt | +25x (50 pt/s) | 20°/s clockwise | 0° |
+| 5 | **Upside Down** | Screen fit, 90% | 0x | none | 180° |
+| 6 | **Slow Waltz** | 80pt | +0.5x (1 pt/s) | 22.5°/s counter-clockwise | 0° |
+
+- A preset may also set the displayed word: **Slow Waltz** switches the word to `"wow"`. Presets that don't set a word keep whatever word is currently displayed.
+
+---
+
 ## 5. Non-Functional & Technical Requirements
 - **Technology Stack:**
   - HTML5, CSS3, and vanilla JavaScript (lightweight, zero-dependency, running directly in any modern web browser).

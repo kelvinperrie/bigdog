@@ -100,8 +100,12 @@
           <span>Scroll oversized text</span>
         </li>
         <li>
+          <kbd>1 – 6</kbd>
+          <span>Presets</span>
+        </li>
+        <li>
           <kbd>H</kbd>
-          <span>Toggle this HUD</span>
+          <span>Toggle HUD &amp; presets</span>
         </li>
       </ul>
     </div>
@@ -116,6 +120,16 @@
       </button>
     </div>
   </aside>
+
+  <!-- Preset Bar -->
+  <nav id="preset-bar" class="preset-bar" aria-label="Presets">
+    <button class="preset-btn" data-preset="spin" title="Fills the screen and spins really fast (1)"><kbd>1</kbd> Spin Cycle</button>
+    <button class="preset-btn" data-preset="turbospin" title="Fills the screen and spins even faster (2)"><kbd>2</kbd> Turbo Spin</button>
+    <button class="preset-btn" data-preset="hyperspin" title="Fills the screen and spins ridiculously fast (3)"><kbd>3</kbd> Hyper Spin</button>
+    <button class="preset-btn" data-preset="bigbang" title="Bursts out from nothing (4)"><kbd>4</kbd> Big Bang</button>
+    <button class="preset-btn" data-preset="upsidedown" title="Fills the screen, flipped over (5)"><kbd>5</kbd> Upside Down</button>
+    <button class="preset-btn" data-preset="waltz" title="Slow grow with a gentle turn (6)"><kbd>6</kbd> Slow Waltz</button>
+  </nav>
 
   <!-- Notification Toast for feedback -->
   <div id="toast" class="toast" role="status" aria-live="polite"></div>

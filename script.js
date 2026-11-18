@@ -16,6 +16,22 @@
   const SCROLL_STEP_FRACTION = 0.10; // 10% of viewport per W/A/S/D press
   const DEFAULT_WORD = 'dog';
 
+  // --- Presets ---
+  // size: a number (pt), or { fit: 'spin' | 'screen', fill } to size relative to the viewport.
+  //   'spin'   - the word's diagonal fits the smaller viewport side, so it stays on screen at any angle
+  //   'screen' - the unrotated word fits the viewport
+  // speed: expansion multiplier (x base rate), rotation: deg/s (+ = clockwise), angle: starting angle
+  // word (optional): switches the displayed word; presets without one keep the current word
+  const PRESETS = {
+    spin:       { label: 'Spin Cycle',  size: { fit: 'spin', fill: 0.95 },   speed: 0,   rotation: 1080,  angle: 0 },
+    turbospin:  { label: 'Turbo Spin',  size: { fit: 'spin', fill: 0.95 },   speed: 0,   rotation: 2500,  angle: 0 },
+    hyperspin:  { label: 'Hyper Spin',  size: { fit: 'spin', fill: 0.95 },   speed: 0,   rotation: 5000,  angle: 0 },
+    bigbang:    { label: 'Big Bang',    size: 0,                             speed: 25,  rotation: 20,    angle: 0 },
+    upsidedown: { label: 'Upside Down', size: { fit: 'screen', fill: 0.9 },  speed: 0,   rotation: 0,     angle: 180 },
+    waltz:      { label: 'Slow Waltz',  size: 80,                            speed: 0.5, rotation: -22.5, angle: 0, word: 'wow' }
+  };
+  const PRESET_KEYS = ['spin', 'turbospin', 'hyperspin', 'bigbang', 'upsidedown', 'waltz'];
+
   // --- Application State ---
   const state = {
     word: DEFAULT_WORD,
@@ -47,6 +63,7 @@
   const btnPlayText = document.getElementById('btn-play-text');
   const btnReset = document.getElementById('btn-reset');
   const toastEl = document.getElementById('toast');
+  const presetBar = document.getElementById('preset-bar');
 
   let toastTimeout = null;
   let lastTimestamp = null;
@@ -254,11 +271,38 @@
 
   function toggleHud(forceState) {
     state.hudVisible = typeof forceState === 'boolean' ? forceState : !state.hudVisible;
-    if (state.hudVisible) {
-      hudPanel.classList.remove('hidden');
-    } else {
-      hudPanel.classList.add('hidden');
-    }
+    hudPanel.classList.toggle('hidden', !state.hudVisible);
+    presetBar.classList.toggle('hidden', !state.hudVisible);
+  }
+
+  // Font size (pt) at which the current word fills `fill` of the viewport.
+  function fitFontSize(mode, fill) {
+    const REF_PT = 100;
+    wordDisplay.style.fontSize = `${REF_PT}pt`; // measure at a known size
+    const w = wordDisplay.offsetWidth;
+    const h = wordDisplay.offsetHeight;
+    if (!w || !h) return INITIAL_FONT_SIZE_PT;
+    const scale = mode === 'spin'
+      ? Math.min(window.innerWidth, window.innerHeight) / Math.hypot(w, h)
+      : Math.min(window.innerWidth / w, window.innerHeight / h);
+    return REF_PT * scale * fill;
+  }
+
+  function applyPreset(key) {
+    const preset = PRESETS[key];
+    if (!preset) return;
+    if (preset.word) setWord(preset.word); // before sizing, so fits measure the new word
+    state.fontSize = typeof preset.size === 'number'
+      ? preset.size
+      : fitFontSize(preset.size.fit, preset.size.fill);
+    state.speedMultiplier = preset.speed;
+    state.rotationVelocity = preset.rotation;
+    state.rotationAngle = preset.angle;
+    state.scrollX = 0;
+    state.scrollY = 0;
+    renderWord();
+    setRunning(true);
+    showToast(`Preset: ${preset.label}`);
   }
 
   // --- Keyboard Event Dispatcher ---
@@ -326,8 +370,15 @@
         toggleHud();
         break;
 
-      default:
+      default: {
+        const match = /^(?:Digit|Numpad)([1-9])$/.exec(e.code);
+        const presetKey = match && PRESET_KEYS[Number(match[1]) - 1];
+        if (presetKey) {
+          e.preventDefault();
+          applyPreset(presetKey);
+        }
         break;
+      }
     }
   });
 
@@ -356,6 +407,13 @@
 
   btnReset.addEventListener('click', () => {
     resetToOriginal();
+  });
+
+  presetBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('.preset-btn');
+    if (!btn) return;
+    applyPreset(btn.dataset.preset);
+    btn.blur(); // keep Space/Enter driving the animation, not re-clicking the button
   });
 
   // --- Initialization ---
